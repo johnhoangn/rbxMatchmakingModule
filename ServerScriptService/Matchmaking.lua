@@ -16,13 +16,30 @@ local Matchmaking = {}
 local MatchingPool = {}
 
 
-local function Matchmade(userList, serverInstance, password)
+-- When a match is made, there are two scenarios:
+-- A, the server that made the match is this one
+--  in which we simply send the matchmade message to other servers
+-- B, the server was not this one
+--  in which we teleport relevant users over to the destination
+-- @param userList <table>, arraylike that contains userIDs
+-- @param jobID <string>, jobID of the server to teleport to, if necessary
+-- @param password <string>, optional but if the destination is a private server
+--  the teleport will fail
+local function Matchmade(userList, jobID, password)
 
 end
 
 
-local function ReadyStateChanged(userID, state)
-    
+-- A user changed ready state
+-- @param userID <integer>
+-- @param state <boolean>
+-- @param ..., anything extra metadata to add like group information
+local function ReadyStateChanged(userID, state, ...)
+    if (state and MatchingPool[userID] == nil) then
+        Matchmaking:AddUserID(userID, ...)
+    else
+        MatchingPool[userID] = nil
+    end
 end
 
 
@@ -31,6 +48,12 @@ end
 -- @param numUsers == 2 <integer>, number of users to attempt to match together
 -- @return true if success, false if fail
 function Matchmaking:TryMatching(numUsers)
+    if (self.Qualifier == nil) then
+        warn("Matchmaking error! Matching qualifier was not defined!")
+
+        return false
+    end
+
 	return false
 end
 
@@ -59,7 +82,11 @@ function Matchmaking:RemoveUserID(userID)
 end
 
 
-function Matchmaking:Teleport(userList, serverInstance, password)
+-- Teleports a list of users to a different server instance
+-- @param userList <table>, arraylike containing userIDs
+-- @param jobID <string>, jobID of the server to teleport to
+-- @param password <string>
+function Matchmaking:Teleport(userList, jobID, password)
 
 end
 
