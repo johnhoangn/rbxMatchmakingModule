@@ -7,6 +7,9 @@
 
 
 
+local JOB_ID = game.JobId
+
+
 local MessagingService = game:GetService("MessagingService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
@@ -36,7 +39,10 @@ end
 -- @param ..., anything extra metadata to add like group information
 local function ReadyStateChanged(userID, state, ...)
     if (state and MatchingPool[userID] == nil) then
-        Matchmaking:AddUserID(userID, ...)
+        MatchingPool[userID] = {
+            Data = {...};
+            Local = Players:GetPlayerByUserId(userID) ~= nil;
+        }
     else
         MatchingPool[userID] = nil
     end
@@ -65,29 +71,62 @@ function Matchmaking:SetMatchingQualifier(callback)
 end
 
 
+-- Overwrites the default teleport code provided in this module
+-- @param callback
+function Matchmaking:SetTeleportCallback(callback)
+    Matchmaking.Teleport = function(Matchmaking, ...)
+        return callback(...)
+    end
+end
+
+
 -- Adds a user to the matching pool
 -- @param userID <integer>
 function Matchmaking:AddUserID(userID, ...)
-	MatchingPool[userID] = {
-        Data = {...};
-        Local = Players:GetPlayerByUserId(userID) ~= nil;
-    }
+	ReadyStateChanged(userID, true, ...)
+    MessagingService:PublishAsync("_ReadyState", {
+        JobID = JOB_ID;
+        UserID = userID;
+        State = true;
+    })
 end
 
 
 -- Removes a user from the matching pool
 -- @param userID <integer>
 function Matchmaking:RemoveUserID(userID)
-	MatchingPool[userID] = nil
+	ReadyStateChanged(userID, false)
+    MessagingService:PublishAsync("_ReadyState", {
+        JobID = JOB_ID;
+        UserID = userID;
+        State = false;
+    })
 end
 
 
 -- Teleports a list of users to a different server instance
 -- @param userList <table>, arraylike containing userIDs
+-- @param placeID <integer>
 -- @param jobID <string>, jobID of the server to teleport to
--- @param password <string>
-function Matchmaking:Teleport(userList, jobID, password)
+-- @param password <string> == nil
+-- @returns <boolean> success
+function Matchmaking:Teleport(userList, placeID, jobID, password)
+    local teleportSuccess = pcall(function()
+        if (jobID == nil) then
+            TeleportService:TeleportAsync(placeID, userList, nil)
+        else
+            assert(jobID ~= nil and password ~= nil, "missing teleport fields, jobID and/or password")
 
+            local options = Instance.new("TeleportOptions")
+
+            options.ServerInstanceId = jobID
+            options.ReservedServerAccessCode = password
+
+            TeleportService:TeleportAsync(placeID, userList, options)
+        end
+    end)
+
+    return teleportSuccess
 end
 
 
