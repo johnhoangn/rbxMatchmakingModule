@@ -107,16 +107,14 @@ end
 -- Teleports a list of users to a different server instance
 -- @param userList <table>, arraylike containing userIDs
 -- @param placeID <integer>
--- @param jobID <string>, jobID of the server to teleport to
+-- @param jobID <string> == nil, jobID of the server to teleport to
 -- @param password <string> == nil
 -- @returns <boolean> success
 function Matchmaking:Teleport(userList, placeID, jobID, password)
-    local teleportSuccess = pcall(function()
+    local teleportSuccess, trace = pcall(function()
         if (jobID == nil) then
             TeleportService:TeleportAsync(placeID, userList, nil)
         else
-            assert(jobID ~= nil and password ~= nil, "missing teleport fields, jobID and/or password")
-
             local options = Instance.new("TeleportOptions")
 
             options.ServerInstanceId = jobID
@@ -126,7 +124,15 @@ function Matchmaking:Teleport(userList, placeID, jobID, password)
         end
     end)
 
-    return teleportSuccess
+    if (not teleportSuccess) then
+        warn("TELEPORT FAILED")
+        warn(userList, placeID, jobID, password)
+        warn(trace)
+
+        return false
+    end
+
+    return true
 end
 
 
